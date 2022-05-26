@@ -1,0 +1,19 @@
+# TOML file for fpm as described at https://github.com/fortran-lang/fpm/blob/master/manifest-reference.md
+name = "kanon"
+version = "1.3.0"
+license = "GNU General Public License v3+"
+author = "Asdrubal Lozada-Blanco"
+maintainer = "aslozada@gmail.com"
+copyright = "2022 Asdrubal Lozada-Blanco"
+description = "Program for calculating a chirality index and other symmetry properties"
+categories = ["Command line"]
+keywords = ["chirality", "symmetry", "graph", "chemistry"]
+homepage = ""
+
+[library]
+source-dir="src"
+
+[[executable]]
+name="kanon"
+source-dir="app"
+main=kanon.f90
