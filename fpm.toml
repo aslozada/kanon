@@ -16,4 +16,4 @@ source-dir="src"
 [[executable]]
 name="kanon"
 source-dir="app"
-main=kanon.f90
+main="kanon.f90"
