@@ -8,7 +8,7 @@
 !>        <http://www.lqt.dq.ufscar.br>
 !>@email  aslozada@gmail.com
 !-----------------------------------------------------------------------------------
-!   Copyright 2018 Asdrubal Lozada
+!   Copyright 2018-2022 Asdrubal Lozada
 !
 !   This program is free software: you can redistribute it and/or modify 
 !   it under the terms of the GNU General Public License as published by
