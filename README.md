@@ -18,6 +18,7 @@ To build kanon from source code you need to have:
 cp app/kanon.f90 src/
 cp Makefile src/
 cd src/
+make clean
 make
 make clean
 ```
