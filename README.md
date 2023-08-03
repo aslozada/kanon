@@ -28,3 +28,14 @@ make clean
 ```
 fpm build
 ```
+
+#### How to use kanon?
+
+kanon uses a XYZFile as input
+
+```
+natom
+comment
+label1 xcoor1 ycoord1 zcoord1
+label2 xcoor2 ycoord2 zcoord2
+``` 
