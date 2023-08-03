@@ -119,4 +119,33 @@ CHI:    0.00000000
 --------------------------------------------------------------------------------
 ```
 
+Comparing an object with any image
 
+```
+kanon --pattern <object>.xyz --image <image>.xyz
+
+```
+
+Delaunay triangulation of surfaces
+
+```
+kanon --pattern <file>.xyz --delaunay <output_grid>.dat
+
+```
+
+```
+output_grid.dat
+
+1 GRID       1286
+   2 REF  6 2 1
+   3          6         2         1
+   4          6         3         2
+   5          4        70         3
+   6          4        69        70
+   7         70        69        74
+   8         71        70        74
+
+```
+
+
+ 
