@@ -1,7 +1,7 @@
 kanon
 ======
 
-Program for calculating a chirality index and other symmetry properties
+Program to compute chirality indices and assess molecular symmetry 
 
 ## Installing
 
@@ -15,8 +15,11 @@ To build kanon from source code you need to have:
 #### Building with make
 
 ```
-make clean
+cp app/kanon.f90 src/
+cp Makefile src/
+cd src/
 make
+make clean
 ```
 
 #### Building with fpm
