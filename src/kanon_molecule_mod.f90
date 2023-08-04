@@ -504,18 +504,31 @@ contains
     real(DP), dimension(3)   :: c   
     real(DP) :: T, T0, T1, Tr, s, theta, nW
     real(DP), dimension(4,4) :: B
+
+    real(DP) :: D02, D2
+
+    real(DP) :: va(3,3),vb(4,4), da(3), db(4)
+
     type(eigen_t)  :: Aeig, Beig
     type(vector_t) :: W
     type(molecule_t)  :: backup
 
     real(DP) :: rmsd(4,181), mrmsd(4)
     real(DP) :: chi(4,181), mchi(4)
+
+    real(DP) :: chi1, rmsd1
     real(DP) :: diameter, mrms
     integer  :: mlrmsd(4), mlchi(4), id, mid, iter
 
     real(DP), allocatable :: Ma(:,:), MaR(:,:)
 
     real(DP) :: start, finish
+
+    real(DP) :: mineig, maxeig
+
+    integer :: it_max, it_num, rot_num
+
+    integer :: inL1, inL4
 
     call cpu_time(start)
 
@@ -591,9 +604,6 @@ contains
         call Parallel_matmul(X1T,X0,V10P, mm=3, nn=3, ll=m)
      end if   
 
-
-     V10P = -V10P
-
      c(1) = V10(2,3) - V10(3,2)
      c(2) = V10(3,1) - V10(1,3)
      c(3) = V10(1,2) - V10(2,1)
@@ -620,29 +630,58 @@ contains
         end do
      end if   
 
-     Aeig = Get_eigenvalues(A,3)
-     Beig = Get_eigenvalues(B,4)
+     !========================================
+       it_max = 100
+
+      call jacobi_eigenvalue ( 3, A, it_max, va, da, it_num, rot_num )
+      call jacobi_eigenvalue ( 4, B, it_max, vb, db, it_num, rot_num )
+     !========================================
+
+       allocate(Beig%values(4),Beig%vectors(4,4))
+       allocate(Aeig%values(3),Aeig%vectors(3,3))
+
+       Beig%values(:) = db(:)
+       Beig%vectors(:,:) =  vb(:,:)
 
      if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
         write(*,'(a)')'---------------------------------------------------------------------------------'
         write(*,'(a)')' Eigenvalues   -   Eigenvectors'
         write(*,'(a)')'---------------------------------------------------------------------------------'
-        write(*,'(5f10.3)') Beig%values(1),Beig%vectors(:,1)
-        write(*,'(5f10.3)') Beig%values(2),Beig%vectors(:,2)
-        write(*,'(5f10.3)') Beig%values(3),Beig%vectors(:,3)
-        write(*,'(5f10.3)') Beig%values(4),Beig%vectors(:,4)
+        write(*,'(5f10.5)') Beig%values(1),Beig%vectors(:,1)
+        write(*,'(5f10.5)') Beig%values(2),Beig%vectors(:,2)
+        write(*,'(5f10.5)') Beig%values(3),Beig%vectors(:,3)
+        write(*,'(5f10.5)') Beig%values(4),Beig%vectors(:,4)
         write(*,'(a)')'--------------------------------------------------------------------------------'
       end if
 
-     diameter = Calc_Diameter( pattern )
+      mineig = Beig%values(1)
+      maxeig = Beig%values(1)
+
+      do j = 2, 4
+         if(Beig%values(j) < mineig) then
+            mineig = Beig%values(j)
+            inL4 = j
+         end if
+         if(Beig%values(j) > maxeig) then
+           maxeig = Beig%values(j)
+           inL1 = j
+         end if
+      end do
+
+
+      write(*,'(a)')'---------------------------------------------------------------------------------'
+      
+      ! use molecule inertia
+  !    diameter = 4.0_DP * T / 3.0_DP
+      diameter = Calc_Diameter( pattern )
 
      do j = 1, m
         Ma(j,:) = image%atoms(j)%xyz(:)
      end do
 
-     if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
-        write(*,'(a)')'Check files: Pattern.xyz / Rotate_image.xyz'
-     end if
+   !@  if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
+   !@     write(*,'(a)')'Check files: Pattern.xyz / Rotate_image.xyz'
+   !@  end if
 
      write(66,*) m
      write(66,'(a)')'Pattern: Build by KANON.' 
@@ -654,249 +693,102 @@ contains
 
      iter = 0
 
-     do k = 1, 181
-        theta = (real(k-1,DP)*PI) / 180.0_DP
+     do k = 180, 180
+        theta = real(k,kind=DP) *PI / 180.0_DP
         
-        W%xyz(1) =  Beig%vectors(2,1)
-        W%xyz(2) =  Beig%vectors(3,1)
-        W%xyz(3) =  Beig%vectors(4,1)
+        W%xyz(1) =  Beig%vectors(2,inL1)
+        W%xyz(2) =  Beig%vectors(3,inL1)
+        W%xyz(3) =  Beig%vectors(4,inL1)
 
         nW = W%norm()
 
         s = dcos(theta/2.0_DP)
-        if ( nw > 0.0_DP ) then
-            W%xyz(:) = W%xyz(:)/nW
-            W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
-            W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
-            W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
-        else    
-        rmsd(1,k) = Calc_RMSD( pattern,image ) 
-        chi(1,k)  = Calc_Hausdorff( pattern, image, diameter )
-            exit 
-        end if
 
-        call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
-
-        write(77,*) m
-        write(77,'(a)')'Rotate image: Build by KANON.' 
-
-        do j = 1, m
-           image%atoms(j)%xyz(1) = MaR(j,1)
-           image%atoms(j)%xyz(2) = MaR(j,2)
-           image%atoms(j)%xyz(3) = MaR(j,3)
-           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
-        end do
-        
-        rmsd(1,k) = Calc_RMSD( pattern, image ) 
-        chi(1,k)  = Calc_Hausdorff( pattern, image, diameter )
-        iter = iter + 1
-        write(88,'(i4,2x,f12.8,2x,f12.8)') iter, rmsd(1,k), chi(1,k)
-
-     end do
-
-     mrmsd(1)  = minval(rmsd(1,:))
-     mchi(1)   = minval(chi(1,:))
-     mlrmsd(1) = minloc(rmsd(1,:),dim=1)
-     mlchi(1)  = minloc(chi(1,:),dim=1)
-     
-
-     do k = 1, 181
-        theta = (real(k-1,DP)*PI) / 180.0_DP
-        
-        W%xyz(1) =  Beig%vectors(2,2)
-        W%xyz(2) =  Beig%vectors(3,2)
-        W%xyz(3) =  Beig%vectors(4,2)
-
-        nW = W%norm()
-
-        s = dcos(theta/2.0_DP)
-        if ( nw > 0.0_DP ) then
-            W%xyz(:) = W%xyz(:)/nW
-            W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
-            W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
-            W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
-        else    
-        rmsd(2,k) = Calc_RMSD( pattern, image ) 
-        chi(2,k)  = Calc_Hausdorff( pattern, image, diameter )
-            exit
-        end if
-
-        call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
-
-        write(77,*) m
-        write(77,'(a)')'Rotate image: Build by KANON.' 
-       
-        do j = 1, m
-           image%atoms(j)%xyz(1) = MaR(j,1)
-           image%atoms(j)%xyz(2) = MaR(j,2)
-           image%atoms(j)%xyz(3) = MaR(j,3)
-           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
-        end do
-        
-        rmsd(2,k) = Calc_RMSD( pattern, image ) 
-        chi(2,k)  = Calc_Hausdorff( pattern, image, diameter )
-        iter = iter + 1
-        write(88,'(i4,2x,f12.8,2x,f12.8)') iter, rmsd(2,k), chi(2,k)
-
-     end do
-
-     mrmsd(2)  = minval(rmsd(2,:))
-     mchi(2)   = minval(chi(2,:))
-     mlrmsd(2) = minloc(rmsd(2,:),dim=1)
-     mlchi(2)  = minloc(chi(2,:),dim=1)
-     
-     do k = 1, 181
-        theta = (real(k-1,DP)*PI) / 180.0_DP
-        
-        W%xyz(1) =  Beig%vectors(2,3)
-        W%xyz(2) =  Beig%vectors(3,3)
-        W%xyz(3) =  Beig%vectors(4,3)
-
-        nW = W%norm()
-
-        s = dcos(theta/2.0_DP)
-        if ( nw > 0.0_DP ) then
-            W%xyz(:) = W%xyz(:)/nW
-            W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
-            W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
-            W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
-        else    
-        rmsd(3,k) = Calc_RMSD( pattern, image ) 
-        chi(3,k)  = Calc_Hausdorff( pattern, image, diameter )
-            exit
-        end if
-
-        call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
-
-        write(77,*) m
-        write(77,'(a)')'Rotate image: Build by KANON.' 
-
-        do j = 1, m
-           image%atoms(j)%xyz(1) = MaR(j,1)
-           image%atoms(j)%xyz(2) = MaR(j,2)
-           image%atoms(j)%xyz(3) = MaR(j,3)
-           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
-        end do
-        
-        rmsd(3,k) = Calc_RMSD( pattern, image ) 
-        chi(3,k)  = Calc_Hausdorff( pattern, image, diameter )
-        iter = iter + 1
-        write(88,'(i4,2x,f12.8,2x,f12.8)') iter, rmsd(3,k), chi(3,k)
-
-     end do
-
-     mrmsd(3)  = minval(rmsd(3,:))
-     mchi(3)   = minval(chi(3,:))
-     mlrmsd(3) = minloc(rmsd(3,:),dim=1)
-     mlchi(3)  = minloc(chi(3,:),dim=1)
-
-     do k = 1, 181
-        theta = (real(k-1,DP)*PI) / 180.0_DP
-        
-        W%xyz(1) =  Beig%vectors(2,4)
-        W%xyz(2) =  Beig%vectors(3,4)
-        W%xyz(3) =  Beig%vectors(4,4)
-
-        nW = W%norm()
-
-        s = dcos(theta/2.0_DP)
-        if ( nw > 0.0_DP ) then
-            W%xyz(:) = W%xyz(:)/nW
-            W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
-            W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
-            W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
-        else    
-        rmsd(4,k) = Calc_RMSD( pattern, image ) 
-        chi(4,k)  = Calc_Hausdorff( pattern, image, diameter )
-        end if
-
-        call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
-
-        write(77,*) m
-        write(77,'(a)')'Rotate image: Build by KANON.' 
-
-        do j = 1, m
-           image%atoms(j)%xyz(1) = MaR(j,1)
-           image%atoms(j)%xyz(2) = MaR(j,2)
-           image%atoms(j)%xyz(3) = MaR(j,3)
-           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
-        end do
-        
-        rmsd(4,k) = Calc_RMSD( pattern, image ) 
-        chi(4,k)  = Calc_Hausdorff( pattern, image, diameter )
-        iter = iter + 1
-        write(88,'(i4,2x,f12.8,2x,f12.8)') iter, rmsd(4,k), chi(4,k)
-
-     end do
-
-     mrmsd(4)  = minval(rmsd(4,:))
-     mchi(4)   = minval(chi(4,:))
-     mlrmsd(4) = minloc(rmsd(4,:),dim=1)
-     mlchi(4)  = minloc(chi(4,:),dim=1)
-    
-      
-     if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
-         write(*,'(a)')'---------------------------------------------------------------------------------'
-         write(*,'(a)')'Root-mean-square deviation' 
-         write(*,'(a,f12.8)')'RMSD: ', minval(mrmsd)
-         write(*,'(a)')'--------------------------------------------------------------------------------'
-         write(*,'(a)')'Hausdorff-derived chirality Index'
-         write(*,'(a,f12.8)')'CHI:  ', minval(mchi)
-         write(*,'(a)')'--------------------------------------------------------------------------------'
-     end if    
-
-     if ( present(is_traj) .and. present(frame) .and. present(utraj) ) then
-        if ( is_traj == 1 ) then
-           if ( present(measure) .and. measure==0) then
-               write(utraj,'(i6,2f10.5)') frame, minval(mchi)
-           elseif( present(measure) .and. measure==1) then
-               write(utraj,'(i6,2f10.5)') frame,  minval(mrmsd)
-           end if    
-        end if
-     end if
-
-     mid = mlrmsd(1)
-     mrms = mrmsd(1)
-     id = 1
-     do k = 2, 4
-        if ( mrmsd(k) < mrms ) then
-           mrms = mrmsd(k)
-           mid = mlrmsd(k)
-           id = k
-        end if  
-     end do
-     
-     image = backup
-     
-     theta  = (real(mid-1,DP)*PI) / 180.0_DP
-     W%xyz(1) =  Beig%vectors(2,id)
-     W%xyz(2) =  Beig%vectors(3,id)
-     W%xyz(3) =  Beig%vectors(4,id)
-
-     nW = W%norm()
-
-     s = dcos(theta/2.0_DP)
-     if ( nw > 0.0_DP ) then
         W%xyz(:) = W%xyz(:)/nW
         W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
         W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
         W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
-       
+
         call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
 
-        rimage%natm = m
+        write(77,*) m
+        write(77,'(a)')'Rotate image: Build by KANON.' 
 
         do j = 1, m
-           rimage%atoms(j)%xyz(1) = MaR(j,1)
-           rimage%atoms(j)%xyz(2) = MaR(j,2)
-           rimage%atoms(j)%xyz(3) = MaR(j,3)
-
-           rimage%atoms(j)%sym = image%atoms(j)%sym
+           image%atoms(j)%xyz(1) = MaR(j,1)
+           image%atoms(j)%xyz(2) = MaR(j,2)
+           image%atoms(j)%xyz(3) = MaR(j,3)
+           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
         end do
+        
+        chi1  = Calc_Hausdorff( pattern, image, diameter )
+        iter = iter + 1
+     
+   end do
 
-     else    
-        rimage = image
-     end if
+    !==========================================
+
+      
+     if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
+         write(*,'(a)')'---------------------------------------------------------------------------------'
+         write(*,'(a)')'Hausdorff-derived chirality Index'
+         write(*,'(a,f12.8)')'CHI:  ', chi1
+         write(*,'(a)')'--------------------------------------------------------------------------------'
+     end if    
+
+     ! TODO
+    !@ if ( present(is_traj) .and. present(frame) .and. present(utraj) ) then
+      !@  if ( is_traj == 1 ) then
+       !@    if ( present(measure) .and. measure==0) then
+       !@        write(utraj,'(i6,2f10.5)') frame, minval(mchi)
+       !@    elseif( present(measure) .and. measure==1) then
+       !@        write(utraj,'(i6,2f10.5)') frame,  minval(mrmsd)
+       !@    end if    
+       !@ end if
+   !@  end if
+
+   !@  mid = mlrmsd(1)
+   !@  mrms = mrmsd(1)
+   !@  id = 1
+   !@  do k = 2, 4
+   !@     if ( mrmsd(k) < mrms ) then
+   !@        mrms = mrmsd(k)
+   !@        mid = mlrmsd(k)
+   !@        id = k
+   !@     end if  
+   !@  end do
+     
+   !@  image = backup
+     
+   !@  theta  = (real(mid-1,DP)*PI) / 180.0_DP
+   !@  W%xyz(1) =  Beig%vectors(2,id)
+   !@  W%xyz(2) =  Beig%vectors(3,id)
+   !@  W%xyz(3) =  Beig%vectors(4,id)
+
+   !@  nW = W%norm()
+
+    !@ s = dcos(theta/2.0_DP)
+   !@  if ( nw > 0.0_DP ) then
+   !@     W%xyz(:) = W%xyz(:)/nW
+   !@     W%xyz(1) =  dsin(theta/2.0_DP) * W%xyz(1)
+   !@     W%xyz(2) =  dsin(theta/2.0_DP) * W%xyz(2)
+   !@     W%xyz(3) =  dsin(theta/2.0_DP) * W%xyz(3)
+       
+    !@    call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
+
+     !@   rimage%natm = m
+
+     !@   do j = 1, m
+     !@      rimage%atoms(j)%xyz(1) = MaR(j,1)
+     !@      rimage%atoms(j)%xyz(2) = MaR(j,2)
+     !@      rimage%atoms(j)%xyz(3) = MaR(j,3)
+
+     !!@      rimage%atoms(j)%sym = image%atoms(j)%sym
+     !@   end do
+
+   !@  else    
+   !@     rimage = image
+     !@end if
 
      call cpu_time(finish)
 
