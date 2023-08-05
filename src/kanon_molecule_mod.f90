@@ -346,75 +346,100 @@ contains
        B(3,k) = image%atoms(k)%xyz(3)
     end do
 
-    k = 0
+!@====================================================    
 
-    c1: do i = 1, n
-        d1: do j = 1, n
-               dx = dabs(A(1,i) - B(1,j))    
-               dy = dabs(A(2,i) - B(2,j))    
-               dz = dabs(A(3,i) - B(3,j))  
-               if ( dx < thresh .and. dy < thresh .and. dz < thresh ) then 
-                  cycle d1
-               end if 
-        end do d1
-        k = k + 1
-        E(:,k) = A(:,i)
-    end do c1
-    
-    allocate(Er(3,k), stat=ierr)
-    if ( ierr /= 0 ) call error%MsgError( 1, ERROR_ALLOCATION )
-
-    do i = 1, k
-       Er(:,i) = E(:,i)
-    end do
-
-    do i = 1, k
-       xi = Get_Random()
-       ik = int(xi*k)+1
-
-       tmp(:) = Er(:,i)
-       p2(:)  = Er(:,ik)
-
-       Er(:,i) = p2(:)
-       Er(:,ik) = tmp(:)
-    end do
-
-    Br = B
-
-    do i = 1, n
-       xi = Get_Random()
-       ik = int( xi*n) + 1
-
-       tmp(:) = Br(:,i)
-       p2(:)  = Br(:,ik)
-
-       Br(:,i)  = p2(:)
-       Br(:,ik) = tmp(:)
-    end do
-
-    cmax = 0.0_DP
-
-    o1: do i = 1, k
-        cmin = 9999.0_DP
-
+    o1: do i = 1, n
+        cmin = 999999.9
         i1: do j = 1, n
-            d2 = (Er(1,i)-Br(1,j))*(Er(1,i)-Br(1,j))+&
-                 &(Er(2,i)-Br(2,j))*(Er(2,i)-Br(2,j))+&
-                 &(Er(3,i)-Br(3,j))*(Er(3,i)-Br(3,j))
-            d2 = dsqrt(d2)   
+               d2 = (A(1,i)-B(1,j))**2 + &
+                  &(A(2,i)-B(2,j))**2 + &
+                  &(A(3,i)-B(3,j))**2
+
+               if(d2 < cmin) then
+                 cmin = d2     
+               end if
+             end do i1
+
+             if(cmin > cmax) then
+               cmax = cmin
+             end if
+    end do o1    
+
+   chi = sqrt(cmax) / diameter
+
+
+
+!@====================================================
+
+!    k = 0
+
+!    c1: do i = 1, n
+!        d1: do j = 1, n
+!               dx = dabs(A(1,i) - B(1,j))    
+!               dy = dabs(A(2,i) - B(2,j))    
+!               dz = dabs(A(3,i) - B(3,j))  
+!               if ( dx < thresh .and. dy < thresh .and. dz < thresh ) then 
+!                  cycle d1
+!               end if 
+!        end do d1
+!        k = k + 1
+!        E(:,k) = A(:,i)
+!    end do c1
+    
+!    allocate(Er(3,k), stat=ierr)
+!    if ( ierr /= 0 ) call error%MsgError( 1, ERROR_ALLOCATION )
+
+!    do i = 1, k
+!       Er(:,i) = E(:,i)
+!    end do
+
+!    do i = 1, k
+!       xi = Get_Random()
+!       ik = int(xi*k)+1
+
+!       tmp(:) = Er(:,i)
+!       p2(:)  = Er(:,ik)
+!
+!       Er(:,i) = p2(:)
+!       Er(:,ik) = tmp(:)
+!    end do
+
+!    Br = B
+
+!    do i = 1, n
+!       xi = Get_Random()
+!       ik = int( xi*n) + 1
+
+!       tmp(:) = Br(:,i)
+!       p2(:)  = Br(:,ik)
+
+!       Br(:,i)  = p2(:)
+!       Br(:,ik) = tmp(:)
+!    end do
+
+!    cmax = 0.0_DP
+
+!    o1: do i = 1, k
+!        cmin = 9999.0_DP
+
+!        i1: do j = 1, n
+!            d2 = (Er(1,i)-Br(1,j))*(Er(1,i)-Br(1,j))+&
+!                 &(Er(2,i)-Br(2,j))*(Er(2,i)-Br(2,j))+&
+!                 &(Er(3,i)-Br(3,j))*(Er(3,i)-Br(3,j))
+!            d2 = dsqrt(d2)   
             
-            if ( d2 < cmin ) then
-               cmin = d2
-            end if
+!            if ( d2 < cmin ) then
+!               cmin = d2
+!            end if
 
-       end do i1
+!       end do i1
 
-       if ( cmin > cmax ) then
-          cmax = cmin
-       end if
-   end do o1
+!       if ( cmin > cmax ) then
+!          cmax = cmin
+!       end if
+!   end do o1
 
-   chi = cmax/diameter
+!   chi = cmax/diameter
   end function Calc_Hausdorff
 
   real(DP) function Calc_Diameter( molecule ) result(phi)
@@ -498,7 +523,7 @@ contains
     integer, intent(in), optional :: is_traj, utraj, frame, measure
     real(DP), allocatable, dimension(:,:) ::&
      & X0, X1, X0T, X1T
-    integer :: n, m, ierr=0, k, j
+    integer :: n, m, ierr=0, k, j, kk
     real(DP), dimension(3,3) ::&
      & V10, V01, V10V01, I, A, VV, V00, V11, V, VT, V10P, SumV
     real(DP), dimension(3)   :: c   
@@ -515,6 +540,7 @@ contains
 
     real(DP) :: rmsd(4,181), mrmsd(4)
     real(DP) :: chi(4,181), mchi(4)
+    real(DP) :: chia(0:180,4)
 
     real(DP) :: chi1, rmsd1
     real(DP) :: diameter, mrms
@@ -693,12 +719,15 @@ contains
 
      iter = 0
 
-     do k = 180, 180
+     !$omp parallel do
+     do kk = 1,4 ! loop over quaternion space
+
+      do k = 0, 180
         theta = real(k,kind=DP) *PI / 180.0_DP
         
-        W%xyz(1) =  Beig%vectors(2,inL1)
-        W%xyz(2) =  Beig%vectors(3,inL1)
-        W%xyz(3) =  Beig%vectors(4,inL1)
+        W%xyz(1) =  Beig%vectors(2,kk)
+        W%xyz(2) =  Beig%vectors(3,kk)
+        W%xyz(3) =  Beig%vectors(4,kk)
 
         nW = W%norm()
 
@@ -711,20 +740,21 @@ contains
 
         call Rotate_matrix_quaternion( s, W, Ma, m, MaR )
 
-        write(77,*) m
-        write(77,'(a)')'Rotate image: Build by KANON.' 
-
         do j = 1, m
            image%atoms(j)%xyz(1) = MaR(j,1)
            image%atoms(j)%xyz(2) = MaR(j,2)
            image%atoms(j)%xyz(3) = MaR(j,3)
-           write(77,'(a,3f10.5)') image%atoms(j)%sym, image%atoms(j)%xyz(:)
         end do
         
         chi1  = Calc_Hausdorff( pattern, image, diameter )
         iter = iter + 1
-     
+
+        chia(k,kk) = chi1
+
+     end do
    end do
+
+   !$omp end parallel do
 
     !==========================================
 
@@ -732,7 +762,7 @@ contains
      if ( .not. is_trajectory .or. ( is_trajectory .and. is_verbose ) ) then
          write(*,'(a)')'---------------------------------------------------------------------------------'
          write(*,'(a)')'Hausdorff-derived chirality Index'
-         write(*,'(a,f12.8)')'CHI:  ', chi1
+         write(*,'(a,f12.8,2x,f12.8)')'CHI:  ', minval(chia)
          write(*,'(a)')'--------------------------------------------------------------------------------'
      end if    
 
