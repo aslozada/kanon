@@ -163,7 +163,7 @@ Example: Hausdorff Chirality Measure for biphenyl
 <img src="https://github.com/aslozada/kanon/blob/main/tests/HCM_bf.png" width="50%" height="50%">
 
 
-# Grid's effects
+ Grid's effects
 
 
 Electron density: Isovalue 0.05
