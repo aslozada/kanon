@@ -156,4 +156,8 @@ export OMP_NUM_THREADS=#
 Example: Hausdorff Chirality Measure for biphenyl
 
 <img src="https://github.com/aslozada/kanon/blob/main/tests/HCM_bf.png" width="50%" height="50%">
- 
+
+
+Grid's effects
+<img src="https://github.com/aslozada/kanon/blob/main/tests/grid.png" width="50%" height="50%">
+
