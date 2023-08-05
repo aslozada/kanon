@@ -150,5 +150,5 @@ REF  6 2 1
 
 Example: Hausdorff Chirality Measure for biphenyl
 
-<img src="https://github.com/aslozada/kanon/blob/main/tests/HCM_bf.png" width="75%" height="75%">
+<img src="https://github.com/aslozada/kanon/blob/main/tests/HCM_bf.png" width="50%" height="50%">
  
