@@ -3,7 +3,7 @@
 This is the official repository of the `kanon` program developed by Asdrubal Lozada-Blanco in the Laboratory of Theoretical Chemistry (Federal University of São Carlos - Brazil)
 
 <div align="center">
-<img src="https://github.com/aslozada/kanon/blob/main/tests/logo_kanon.png" width="25%" height="25%">
+<img src="https://github.com/aslozada/kanon/blob/main/tests/logo_kanon.png" width="35%" height="35%">
 </div>
 
 
