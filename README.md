@@ -147,6 +147,11 @@ REF  6 2 1
 ...
 
 ```
+With openmp
+```
+export OMP_NUM_THREADS=#
+```
+
 
 Example: Hausdorff Chirality Measure for biphenyl
 
