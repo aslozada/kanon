@@ -159,5 +159,6 @@ Example: Hausdorff Chirality Measure for biphenyl
 
 
 Grid's effects
+
 <img src="https://github.com/aslozada/kanon/blob/main/tests/grid.png" width="50%" height="50%">
 
