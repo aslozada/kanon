@@ -7,7 +7,7 @@ This is the official repository of the `kanon` program developed by Asdrubal Loz
 </div>
 
 
-## Installing
+## Installation
 
 ### Building from source
 
